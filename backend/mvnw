@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+MVNW_MAVEN_VERSION=3.9.12
+
+if [ -n "${MAVEN_HOME:-}" ] && [ -x "$MAVEN_HOME/bin/mvn" ]; then
+    MVNW_MAVEN_CMD="$MAVEN_HOME/bin/mvn"
+elif command -v mvn >/dev/null 2>&1; then
+    MVNW_MAVEN_CMD="$(command -v mvn)"
+else
+    MVNW_MAVEN_CMD=""
+    MVNW_USER_HOME="${HOME:-}"
+    MVNW_CACHE_BASE="${MVNW_USER_HOME}/.m2/wrapper/dists/apache-maven-${MVNW_MAVEN_VERSION}-bin"
+    for candidate in "$MVNW_CACHE_BASE"/*/"apache-maven-${MVNW_MAVEN_VERSION}/bin/mvn"; do
+        if [ -x "$candidate" ]; then
+            MVNW_MAVEN_CMD="$candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "$MVNW_MAVEN_CMD" ]; then
+    echo "Maven ${MVNW_MAVEN_VERSION} nao foi encontrado no PATH, MAVEN_HOME ou cache local." >&2
+    echo "Downloads automaticos estao desabilitados neste projeto." >&2
+    exit 1
+fi
+
+exec "$MVNW_MAVEN_CMD" "$@"

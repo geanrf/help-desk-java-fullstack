@@ -1,0 +1,43 @@
+# Perfil exclusivo para desenvolvimento local. Os valores abaixo são demonstrativos.
+spring:
+  datasource:
+    url: jdbc:h2:file:./.data/helpdesk-local;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+
+server:
+  port: 8081
+
+app:
+  security:
+    jwt:
+      # Chave de desenvolvimento sem uso fora do perfil local.
+      secret: ${JWT_SECRET:aGVscC1kZXNrLWxvY2FsLWRldmVsb3BtZW50LW9ubHktc2VjcmV0LWtleQ==}
+      issuer: help-desk-local
+      expiration: PT4H
+    cors:
+      allowed-origins:
+        - http://localhost:5174
+        - http://127.0.0.1:5174
+  local-demo:
+    # Contas públicas de demonstração; nunca reutilizar estas senhas em outro ambiente.
+    enabled: true
+    admin:
+      name: Administrador Demo
+      email: admin@helpdesk.local
+      password: Admin@12345
+    technician:
+      name: Técnico Demo
+      email: tecnico@helpdesk.local
+      password: Tecnico@12345
+    user:
+      name: Usuário Demo
+      email: usuario@helpdesk.local
+      password: Usuario@12345

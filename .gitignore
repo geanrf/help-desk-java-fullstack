@@ -1,0 +1,56 @@
+# Environment files and local overrides
+.env
+.env.*
+!.env.example
+*.local
+
+# Credentials and private key material
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+
+# Java / Maven
+**/target/
+**/out/
+*.class
+*.log
+
+# Local databases
+backend/.data/
+*.mv.db
+*.trace.db
+*.lock.db
+
+# Node / Vite
+**/node_modules/
+**/dist/
+**/.tools/
+**/.npm/
+**/.vite/
+**/coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDEs and local agent configuration
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+.agents/
+.codex/
+*.iml
+
+# Operating systems and temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.swp
+*~
