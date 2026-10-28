@@ -4,7 +4,9 @@ import com.geanrocha.helpdesk.auth.api.dto.RegisterUserRequest;
 import com.geanrocha.helpdesk.shared.api.dto.PageResponse;
 import com.geanrocha.helpdesk.shared.application.PageableValidator;
 import com.geanrocha.helpdesk.shared.exception.EmailAlreadyInUseException;
+import com.geanrocha.helpdesk.shared.exception.ResourceNotFoundException;
 import com.geanrocha.helpdesk.user.api.dto.AdminCreateUserRequest;
+import com.geanrocha.helpdesk.user.api.dto.AdminUpdateUserRequest;
 import com.geanrocha.helpdesk.user.api.dto.TechnicianResponse;
 import com.geanrocha.helpdesk.user.api.dto.UserResponse;
 import com.geanrocha.helpdesk.user.domain.model.Role;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -48,6 +51,32 @@ public class UserService {
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse createByAdmin(AdminCreateUserRequest request) {
         return createUser(request.name(), request.email(), request.password(), request.role());
+    }
+
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse updateByAdmin(UUID id, AdminUpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario nao encontrado"));
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+
+        if (!user.getEmail().equalsIgnoreCase(normalizedEmail)
+                && userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new EmailAlreadyInUseException();
+        }
+
+        user.updateProfile(request.name().trim(), normalizedEmail, request.role());
+        if (request.active()) {
+            user.activate();
+        } else {
+            user.deactivate();
+        }
+
+        if (request.password() != null) {
+            user.changePasswordHash(passwordEncoder.encode(request.password()));
+        }
+
+        return UserResponse.from(userRepository.save(user));
     }
 
     @Transactional(readOnly = true)

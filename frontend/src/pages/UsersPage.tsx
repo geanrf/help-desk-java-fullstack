@@ -14,6 +14,7 @@ import { Spinner } from '../components/ui/Spinner'
 import { TextField } from '../components/ui/TextField'
 import { AccountStatusBadge } from '../features/users/components/AccountStatusBadge'
 import { CreateUserForm } from '../features/users/components/CreateUserForm'
+import { EditUserForm } from '../features/users/components/EditUserForm'
 import { usersService } from '../features/users/users.service'
 import type { ManagedUser, UserPage } from '../features/users/types'
 
@@ -36,6 +37,7 @@ export function UsersPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   const pageParam = Number(searchParams.get('page') ?? '0')
@@ -99,6 +101,12 @@ export function UsersPage() {
     setSuccess(`${createdUser.name} foi cadastrado com sucesso.`)
     if (page === 0) setReloadKey((value) => value + 1)
     else setPage(0)
+  }
+
+  function handleUpdated(updatedUser: ManagedUser) {
+    setEditingUser(null)
+    setSuccess(`${updatedUser.name} foi atualizado com sucesso.`)
+    setReloadKey((value) => value + 1)
   }
 
   return (
@@ -167,9 +175,9 @@ export function UsersPage() {
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[760px] text-left">
+              <table className="w-full min-w-[860px] text-left">
                 <thead className="bg-slate-950/35 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                  <tr><th className="px-5 py-3 font-semibold">Usuário</th><th className="px-4 py-3 font-semibold">Perfil</th><th className="px-4 py-3 font-semibold">Situação</th><th className="px-5 py-3 font-semibold">Cadastrado em</th></tr>
+                  <tr><th className="px-5 py-3 font-semibold">Usuário</th><th className="px-4 py-3 font-semibold">Perfil</th><th className="px-4 py-3 font-semibold">Situação</th><th className="px-5 py-3 font-semibold">Cadastrado em</th><th className="px-5 py-3 text-right font-semibold">Ações</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
                   {users.content.map((managedUser) => (
@@ -178,6 +186,7 @@ export function UsersPage() {
                       <td className="px-4 py-4"><RoleBadge role={managedUser.role} /></td>
                       <td className="px-4 py-4"><AccountStatusBadge active={managedUser.active} /></td>
                       <td className="px-5 py-4 text-xs text-slate-400">{createdAtFormatter.format(new Date(managedUser.createdAt))}</td>
+                      <td className="px-5 py-4 text-right"><Button aria-label={`Editar ${managedUser.name}`} className="min-h-9 px-3 py-2" onClick={() => { setSuccess(''); setEditingUser(managedUser) }} type="button" variant="ghost"><Icon className="size-4" name="edit" />Editar</Button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -189,6 +198,7 @@ export function UsersPage() {
                 <article className="p-4" key={managedUser.id}>
                   <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h4 className="truncate font-semibold text-white">{managedUser.name}</h4><p className="mt-1 truncate text-xs text-slate-500">{managedUser.email}</p></div><AccountStatusBadge active={managedUser.active} /></div>
                   <div className="mt-4 flex items-center justify-between gap-3"><RoleBadge role={managedUser.role} /><time className="text-xs text-slate-600">{createdAtFormatter.format(new Date(managedUser.createdAt))}</time></div>
+                  <Button className="mt-4 w-full" onClick={() => { setSuccess(''); setEditingUser(managedUser) }} type="button" variant="secondary"><Icon className="size-4" name="edit" />Editar usuário</Button>
                 </article>
               ))}
             </div>
@@ -199,6 +209,9 @@ export function UsersPage() {
 
       <Modal description="A nova conta será criada com o perfil selecionado e ficará ativa imediatamente." onClose={() => setCreateOpen(false)} open={createOpen} title="Cadastrar usuário">
         <CreateUserForm onCancel={() => setCreateOpen(false)} onCreated={handleCreated} />
+      </Modal>
+      <Modal description="Atualize os dados, o perfil, a situação ou redefina a senha da conta." onClose={() => setEditingUser(null)} open={editingUser !== null} title="Editar usuário">
+        {editingUser && <EditUserForm key={editingUser.id} onCancel={() => setEditingUser(null)} onUpdated={handleUpdated} user={editingUser} />}
       </Modal>
     </div>
   )

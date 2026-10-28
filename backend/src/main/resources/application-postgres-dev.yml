@@ -1,0 +1,8 @@
+# Perfil opt-in para desenvolvimento local com PostgreSQL real.
+# O bootstrap fica desabilitado por padrao e nao possui credenciais de fallback.
+app:
+  bootstrap-admin:
+    enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
+    name: ${APP_BOOTSTRAP_ADMIN_NAME:}
+    email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}

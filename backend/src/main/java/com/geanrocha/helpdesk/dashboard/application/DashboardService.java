@@ -35,6 +35,10 @@ import java.util.UUID;
 @Service
 public class DashboardService {
 
+    private static final UUID ALL_ASSIGNEES_SENTINEL = new UUID(0L, 0L);
+    private static final Instant MIN_QUERY_DATE = Instant.parse("0001-01-01T00:00:00Z");
+    private static final Instant MAX_QUERY_DATE = Instant.parse("9999-12-31T23:59:59.999999Z");
+
     private final DashboardRepository dashboardRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
@@ -57,13 +61,17 @@ public class DashboardService {
         validatePeriod(from, to);
         CurrentUser currentUser = currentUserProvider.get();
         UUID assigneeScope = resolveAssigneeScope(currentUser);
+        boolean includeAllAssignees = assigneeScope == null;
+        UUID queryAssigneeId = includeAllAssignees ? ALL_ASSIGNEES_SENTINEL : assigneeScope;
+        Instant queryFrom = from == null ? MIN_QUERY_DATE : from;
+        Instant queryTo = to == null ? MAX_QUERY_DATE : to;
 
         EnumMap<TicketStatus, Long> statusCounts = initializeStatusCounts();
-        dashboardRepository.countByStatus(assigneeScope, from, to)
+        dashboardRepository.countByStatus(includeAllAssignees, queryAssigneeId, queryFrom, queryTo)
                 .forEach(result -> statusCounts.put(result.getStatus(), result.getTotal()));
 
         EnumMap<TicketPriority, Long> priorityCounts = initializePriorityCounts();
-        dashboardRepository.countByPriority(assigneeScope, from, to)
+        dashboardRepository.countByPriority(includeAllAssignees, queryAssigneeId, queryFrom, queryTo)
                 .forEach(result -> priorityCounts.put(result.getPriority(), result.getTotal()));
 
         long totalActiveTickets = statusCounts.values().stream().mapToLong(Long::longValue).sum();
@@ -83,8 +91,8 @@ public class DashboardService {
                 resolvedTickets + closedTickets,
                 mapStatusCounts(statusCounts),
                 mapPriorityCounts(priorityCounts),
-                mapCategoryCounts(assigneeScope, from, to),
-                mapTechnicianCounts(currentUser, assigneeScope, from, to)
+                mapCategoryCounts(includeAllAssignees, queryAssigneeId, queryFrom, queryTo),
+                mapTechnicianCounts(currentUser, includeAllAssignees, queryAssigneeId, queryFrom, queryTo)
         );
     }
 
@@ -122,13 +130,18 @@ public class DashboardService {
                 .toList();
     }
 
-    private List<CategoryCountResponse> mapCategoryCounts(UUID scope, Instant from, Instant to) {
+    private List<CategoryCountResponse> mapCategoryCounts(
+            boolean includeAllAssignees,
+            UUID assigneeId,
+            Instant from,
+            Instant to
+    ) {
         Map<UUID, CategoryCountResponse> counts = new LinkedHashMap<>();
 
         categoryRepository.findAllByActiveTrueOrderByNameAsc().forEach(category ->
                 counts.put(category.getId(), mapCategory(category, 0L))
         );
-        dashboardRepository.countByCategory(scope, from, to).forEach(result ->
+        dashboardRepository.countByCategory(includeAllAssignees, assigneeId, from, to).forEach(result ->
                 counts.put(
                         result.getCategoryId(),
                         new CategoryCountResponse(
@@ -154,14 +167,16 @@ public class DashboardService {
 
     private List<TechnicianCountResponse> mapTechnicianCounts(
             CurrentUser currentUser,
-            UUID scope,
+            boolean includeAllAssignees,
+            UUID assigneeId,
             Instant from,
             Instant to
     ) {
         Map<UUID, TechnicianCountResponse> counts = new LinkedHashMap<>();
         List<TechnicianCountProjection> aggregated = dashboardRepository.countByTechnician(
                 Role.TECNICO,
-                scope,
+                includeAllAssignees,
+                assigneeId,
                 from,
                 to
         );

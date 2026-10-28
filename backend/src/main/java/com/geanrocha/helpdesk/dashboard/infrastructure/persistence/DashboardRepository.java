@@ -20,12 +20,13 @@ public interface DashboardRepository extends Repository<Ticket, UUID> {
             SELECT t.status AS status, COUNT(t.id) AS total
             FROM Ticket t
             WHERE t.deletedAt IS NULL
-              AND (:assigneeId IS NULL OR t.assignee.id = :assigneeId)
-              AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR t.createdAt <= :toDate)
+              AND (:includeAllAssignees = true OR t.assignee.id = :assigneeId)
+              AND t.createdAt >= :fromDate
+              AND t.createdAt <= :toDate
             GROUP BY t.status
             """)
     List<StatusCountProjection> countByStatus(
+            @Param("includeAllAssignees") boolean includeAllAssignees,
             @Param("assigneeId") UUID assigneeId,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
@@ -35,12 +36,13 @@ public interface DashboardRepository extends Repository<Ticket, UUID> {
             SELECT t.priority AS priority, COUNT(t.id) AS total
             FROM Ticket t
             WHERE t.deletedAt IS NULL
-              AND (:assigneeId IS NULL OR t.assignee.id = :assigneeId)
-              AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR t.createdAt <= :toDate)
+              AND (:includeAllAssignees = true OR t.assignee.id = :assigneeId)
+              AND t.createdAt >= :fromDate
+              AND t.createdAt <= :toDate
             GROUP BY t.priority
             """)
     List<PriorityCountProjection> countByPriority(
+            @Param("includeAllAssignees") boolean includeAllAssignees,
             @Param("assigneeId") UUID assigneeId,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
@@ -53,13 +55,14 @@ public interface DashboardRepository extends Repository<Ticket, UUID> {
                    COUNT(t.id) AS total
             FROM Ticket t
             WHERE t.deletedAt IS NULL
-              AND (:assigneeId IS NULL OR t.assignee.id = :assigneeId)
-              AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR t.createdAt <= :toDate)
+              AND (:includeAllAssignees = true OR t.assignee.id = :assigneeId)
+              AND t.createdAt >= :fromDate
+              AND t.createdAt <= :toDate
             GROUP BY t.category.id, t.category.code, t.category.name
             ORDER BY t.category.name
             """)
     List<CategoryCountProjection> countByCategory(
+            @Param("includeAllAssignees") boolean includeAllAssignees,
             @Param("assigneeId") UUID assigneeId,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
@@ -74,14 +77,15 @@ public interface DashboardRepository extends Repository<Ticket, UUID> {
             WHERE t.deletedAt IS NULL
               AND t.assignee IS NOT NULL
               AND t.assignee.role = :technicianRole
-              AND (:assigneeId IS NULL OR t.assignee.id = :assigneeId)
-              AND (:fromDate IS NULL OR t.createdAt >= :fromDate)
-              AND (:toDate IS NULL OR t.createdAt <= :toDate)
+              AND (:includeAllAssignees = true OR t.assignee.id = :assigneeId)
+              AND t.createdAt >= :fromDate
+              AND t.createdAt <= :toDate
             GROUP BY t.assignee.id, t.assignee.name, t.assignee.active
             ORDER BY t.assignee.name
             """)
     List<TechnicianCountProjection> countByTechnician(
             @Param("technicianRole") Role technicianRole,
+            @Param("includeAllAssignees") boolean includeAllAssignees,
             @Param("assigneeId") UUID assigneeId,
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate

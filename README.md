@@ -10,13 +10,13 @@
 </p>
 
 <p align="center">
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-perfil_principal-4169E1?style=flat-square&amp;logo=postgresql&amp;logoColor=white">
+  <img alt="PostgreSQL 18 validado" src="https://img.shields.io/badge/PostgreSQL_18-validado-22C55E?style=flat-square&amp;logo=postgresql&amp;logoColor=white">
   <img alt="H2 validado" src="https://img.shields.io/badge/H2-local_validado-34D399?style=flat-square">
   <img alt="JWT HS256" src="https://img.shields.io/badge/JWT-HS256-0F172A?style=flat-square&amp;logo=jsonwebtokens&amp;logoColor=22D3EE">
   <img alt="Spring Security" src="https://img.shields.io/badge/Spring_Security-6DB33F?style=flat-square&amp;logo=springsecurity&amp;logoColor=white">
   <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4.3-06B6D4?style=flat-square&amp;logo=tailwindcss&amp;logoColor=white">
   <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8.3-646CFF?style=flat-square&amp;logo=vite&amp;logoColor=white">
-  <img alt="Testes Java" src="https://img.shields.io/badge/testes_Java-22_aprovados-22C55E?style=flat-square&amp;logo=junit5&amp;logoColor=white">
+  <img alt="Testes Java" src="https://img.shields.io/badge/testes_Java-23_aprovados-22C55E?style=flat-square&amp;logo=junit5&amp;logoColor=white">
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
   <a href="#demonstração">Demonstração</a> ·
   <a href="#funcionalidades-por-perfil">Perfis</a> ·
   <a href="#arquitetura">Arquitetura</a> ·
-  <a href="#executar-localmente-com-h2">Executar</a> ·
+  <a href="#executar-com-postgresql-18">Executar</a> ·
   <a href="#testes-e-qualidade">Testes</a> ·
   <a href="#api-principal">API</a>
 </p>
@@ -47,7 +47,7 @@ Mais do que um CRUD, o sistema demonstra decisões comuns em produtos corporativ
 - DTOs e respostas de erro que mantêm entidades e dados sensíveis fora do contrato público.
 
 > [!IMPORTANT]
-> O ambiente local com **H2 está validado**. A execução real das migrations e das consultas com **PostgreSQL ainda está pendente** e não é apresentada como concluída.
+> O fluxo principal foi validado de ponta a ponta com **PostgreSQL 18.1 real**: Flyway V1/V2, autenticação, permissões, usuários, chamados, comentários, histórico, dashboard e persistência após reinício. O H2 permanece como alternativa local isolada.
 
 ## Demonstração
 
@@ -244,48 +244,59 @@ O campo de versão do chamado oferece suporte a concorrência otimista. `deleted
 | `GET` | `/api/v1/tickets/{id}/history` | Consultar a trilha de eventos | Conforme o chamado |
 | `GET` | `/api/v1/dashboard/summary` | Obter indicadores por escopo e período | `ADMIN` ou `TECNICO` |
 | `GET` / `POST` | `/api/v1/users` | Listar ou cadastrar usuários | `ADMIN` |
+| `PUT` | `/api/v1/users/{id}` | Editar perfil, situação e senha opcional | `ADMIN` |
 | `GET` | `/api/v1/users/technicians` | Listar técnicos ativos | `ADMIN` |
 
-Com a aplicação em execução, o contrato interativo fica disponível em `http://localhost:8081/swagger-ui.html` no perfil local.
+Com a aplicação principal em execução, o contrato interativo fica disponível em `http://localhost:8080/swagger-ui.html`.
 
-## Executar localmente com H2
+## Executar com PostgreSQL 18
 
-O perfil `local` usa um H2 persistente em `backend/.data/helpdesk-local.mv.db`. O diretório é ignorado pelo Git, o Flyway fica desativado somente nesse perfil e o Hibernate mantém o schema local.
+Este é o fluxo principal e comprovado do projeto. O Spring Boot usa PostgreSQL por padrão, valida o schema com Hibernate e aplica as migrations com Flyway.
 
 ### Pré-requisitos
 
 - JDK 21;
 - Node.js 24 ou superior e npm;
+- PostgreSQL 18 com o serviço ativo;
+- banco `helpdesk_db` pertencente ao usuário `helpdesk_app`;
 - Git.
 
-PostgreSQL e Docker **não são necessários** para o ambiente local.
+O acesso local deve usar autenticação por senha, preferencialmente `scram-sha-256`. Não use `trust` no `pg_hba.conf`.
 
-### 1. Clonar o repositório
+### 1. Iniciar o backend com prompt seguro
 
-```bash
-git clone https://github.com/geanrf/help-desk-java-fullstack.git
-cd help-desk-java-fullstack
-```
-
-### 2. Iniciar o backend
-
-Windows PowerShell:
+Na primeira execução, habilite explicitamente o bootstrap do ADMIN de desenvolvimento. O script solicita as senhas sem eco, mantém os valores apenas no processo e não cria `.env`:
 
 ```powershell
 cd backend
-.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=local'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-PostgresDev.ps1 -BootstrapAdmin -AdminEmail 'admin@helpdesk.dev'
 ```
 
-Linux ou macOS:
+O bootstrap existe somente no perfil `postgres-dev`, fica desabilitado por padrão e não possui senha de fallback. Se o e-mail já existir, nenhuma credencial é redefinida. Nas execuções seguintes:
 
-```bash
+```powershell
 cd backend
-./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Start-PostgresDev.ps1
 ```
 
-### 3. Iniciar o frontend
+Também é possível iniciar manualmente com variáveis de ambiente:
 
-Em outro terminal:
+```powershell
+$env:DB_URL = 'jdbc:postgresql://127.0.0.1:5432/helpdesk_db'
+$env:DB_USERNAME = 'helpdesk_app'
+$env:DB_PASSWORD = '<defina-somente-no-terminal-local>'
+$env:JWT_SECRET = '<segredo-base64-com-pelo-menos-32-bytes>'
+$env:JWT_ISSUER = 'help-desk-api'
+$env:CORS_ALLOWED_ORIGINS = 'http://localhost:5174'
+$env:SPRING_PROFILES_ACTIVE = 'postgres-dev'
+
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+### 2. Iniciar o frontend
+
+Em outro terminal, o proxy padrão já aponta para a API na porta 8080:
 
 ```bash
 cd frontend
@@ -293,18 +304,35 @@ npm ci
 npm run dev
 ```
 
-### 4. Acessar
+### 3. Acessar
 
 | Recurso | Endereço |
 | --- | --- |
 | Aplicação | `http://localhost:5174` |
-| API local | `http://localhost:8081/api/v1` |
-| Swagger UI | `http://localhost:8081/swagger-ui.html` |
-| OpenAPI JSON | `http://localhost:8081/api-docs` |
+| API PostgreSQL | `http://localhost:8080/api/v1` |
+| Swagger UI | `http://localhost:8080/swagger-ui.html` |
+| OpenAPI JSON | `http://localhost:8080/api-docs` |
 
-### Contas demonstrativas
+O Flyway aplica e registra em `flyway_schema_history`:
 
-Estas contas são criadas de forma idempotente **somente** no perfil `local`:
+- `V1__create_initial_schema.sql`: tabelas, relacionamentos, constraints e índices;
+- `V2__seed_default_categories.sql`: cinco categorias iniciais.
+
+> [!NOTE]
+> A versão de Flyway gerenciada pelo Spring Boot 3.5.16 emite um aviso de que PostgreSQL 18 é mais novo que a faixa oficialmente testada por ela. Neste projeto, V1, V2, validação de schema, consultas JPA e reinício foram executados com sucesso no PostgreSQL 18.1.
+
+## Executar localmente com H2
+
+O perfil `local` continua disponível como alternativa rápida. Ele usa H2 persistente em `backend/.data/helpdesk-local.mv.db`, desativa Flyway somente nesse perfil e sobe a API na porta 8081:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run '-Dspring-boot.run.profiles=local'
+```
+
+Para usar o frontend com H2, defina `VITE_PROXY_TARGET=http://localhost:8081` em `frontend/.env.local`, arquivo ignorado pelo Git.
+
+As contas abaixo são criadas **somente** no perfil `local` e nunca no perfil PostgreSQL ou em produção:
 
 | Perfil | E-mail | Senha local |
 | --- | --- | --- |
@@ -312,56 +340,29 @@ Estas contas são criadas de forma idempotente **somente** no perfil `local`:
 | `TECNICO` | `tecnico@helpdesk.local` | `Tecnico@12345` |
 | `USUARIO` | `usuario@helpdesk.local` | `Usuario@12345` |
 
-As credenciais e o segredo JWT de fallback desse perfil são públicos e exclusivamente demonstrativos. Nunca os reutilize em outro ambiente.
-
-## Configuração PostgreSQL
-
-O perfil padrão está preparado para PostgreSQL e executa as migrations Flyway. Crie previamente o banco `helpdesk_db` e forneça as configurações por variáveis de ambiente — sem versionar credenciais.
-
-```powershell
-$env:DB_URL = 'jdbc:postgresql://localhost:5432/helpdesk_db'
-$env:DB_USERNAME = 'helpdesk_app'
-$env:DB_PASSWORD = '<defina-localmente>'
-$env:JWT_SECRET = '<segredo-base64-com-pelo-menos-32-bytes>'
-$env:JWT_ISSUER = 'help-desk-api'
-$env:CORS_ALLOWED_ORIGINS = 'http://localhost:5174'
-
-cd backend
-.\mvnw.cmd spring-boot:run
-```
-
-Nesse perfil, a API usa a porta `8080`. Para o frontend local apontar para ela, crie um `frontend/.env.local` não versionado:
-
-```dotenv
-VITE_API_URL=/api/v1
-VITE_PROXY_TARGET=http://localhost:8080
-VITE_DEV_PORT=5174
-```
-
-O Flyway aplica:
-
-- `V1__create_initial_schema.sql`: tabelas, relacionamentos, restrições e índices;
-- `V2__seed_default_categories.sql`: categorias iniciais idempotentes.
-
-> [!WARNING]
-> A integração real com PostgreSQL ainda não foi validada. O próximo marco técnico é executar as migrations, o workflow e as consultas agregadas nesse banco.
-
 ## Testes e qualidade
 
-Última validação conhecida em **27/10/2026**:
+Última validação real em **28/10/2026**:
 
 | Verificação | Resultado |
 | --- | --- |
-| Testes Java | **22 executados, 0 falhas, 0 erros, 0 ignorados** |
+| PostgreSQL | **18.1**, `helpdesk_app` conectado e proprietário de `helpdesk_db` |
+| Autenticação local | regras efetivas do `pg_hba.conf` em `scram-sha-256`, sem `trust` |
+| Flyway | V1 e V2 aplicadas, validadas e estáveis após reinício |
+| Schema | tabelas, FKs, checks, unicidades, índices e cinco categorias conferidos |
+| Smoke test da API | **35 verificações HTTP aprovadas** |
+| Persistência | ticket, 2 comentários e 11 eventos confirmados após reiniciar o backend |
+| Testes Java | **23 executados, 0 falhas, 0 erros, 0 ignorados** |
 | TypeScript | `npm run typecheck` aprovado |
-| Frontend | `npm run build` aprovado |
-| Ambiente local | Login, navegação, dashboard, chamados, histórico, usuários e atribuição validados com H2 |
+| Frontend | `npm run build` aprovado; shell, proxy, login e dashboard responderam 200 |
+
+O smoke test cobriu login `ADMIN`/`TECNICO`/`USUARIO`, criação e edição de usuários, criação/edição/soft delete de chamado, atribuição, prioridade, workflow, comentários, histórico, dashboard e respostas negativas `403`, `404` e `422`.
 
 Backend:
 
 ```powershell
 cd backend
-.\mvnw.cmd test
+.\mvnw.cmd clean test
 ```
 
 Frontend:
@@ -372,13 +373,14 @@ npm run typecheck
 npm run build
 ```
 
-Os 22 testes Java cobrem regras de autorização, transições de status, criação de chamados com o usuário autenticado, agregações do dashboard, cadastro de usuários e proteção de DTOs sensíveis. Não há contagem fictícia de testes frontend: atualmente o frontend é verificado por typecheck e build de produção.
+Os 23 testes Java cobrem regras de autorização, transições de status, criação de chamados com o usuário autenticado, agregações do dashboard, cadastro e edição de usuários e proteção de DTOs sensíveis. O frontend é verificado por typecheck, build de produção e integração HTTP real pelo proxy do Vite.
 
 ## Segurança
 
 - senhas armazenadas exclusivamente como hash BCrypt;
 - API stateless com expiração configurável do JWT;
 - segredo JWT obrigatório fora do perfil local;
+- bootstrap do ADMIN opt-in, restrito ao perfil `postgres-dev` e sem senha padrão;
 - cadastro público limitado ao perfil `USUARIO`;
 - autorização por perfil, propriedade e atribuição;
 - CORS configurável por ambiente;
@@ -412,8 +414,8 @@ help-desk/
 
 ## Próximas evoluções
 
-- validar PostgreSQL e migrations Flyway em ambiente autorizado;
-- adicionar testes de integração com PostgreSQL isolado;
+- automatizar o smoke test PostgreSQL em ambiente isolado no CI;
+- atualizar Flyway quando a versão gerenciada declarar suporte oficial ao PostgreSQL 18;
 - automatizar testes de interface e acessibilidade;
 - evoluir SLAs, notificações e filas por equipe;
 - permitir anexos com política segura de armazenamento;
@@ -428,4 +430,4 @@ Desenvolvido por **Gean Rocha** como projeto de portfólio Java Full Stack.
 
 ## Estado do projeto
 
-MVP funcional e validado localmente com H2, frontend integrado à API real, 22 testes Java aprovados e documentação visual baseada em capturas autênticas. A validação com PostgreSQL permanece explicitamente pendente.
+MVP full stack validado com PostgreSQL 18.1 real, Flyway V1/V2, frontend integrado, 23 testes Java, typecheck/build React e smoke test HTTP de 35 verificações. O H2 permanece apenas como alternativa local; a documentação visual continua baseada em capturas autênticas da aplicação.

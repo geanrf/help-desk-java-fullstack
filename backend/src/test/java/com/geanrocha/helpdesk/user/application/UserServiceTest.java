@@ -2,6 +2,7 @@ package com.geanrocha.helpdesk.user.application;
 
 import com.geanrocha.helpdesk.auth.api.dto.RegisterUserRequest;
 import com.geanrocha.helpdesk.shared.exception.EmailAlreadyInUseException;
+import com.geanrocha.helpdesk.user.api.dto.AdminUpdateUserRequest;
 import com.geanrocha.helpdesk.user.domain.model.Role;
 import com.geanrocha.helpdesk.user.domain.model.User;
 import com.geanrocha.helpdesk.user.infrastructure.persistence.UserRepository;
@@ -17,6 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -82,6 +85,33 @@ class UserServiceTest {
 
         verify(passwordEncoder, never()).encode(any());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldUpdateUserProfileStatusAndPassword() {
+        UUID userId = UUID.randomUUID();
+        User user = new User("Nome Antigo", "antigo@example.com", "old-hash", Role.USUARIO);
+        AdminUpdateUserRequest request = new AdminUpdateUserRequest(
+                "  Nome Atualizado  ",
+                "  NOVO@EXAMPLE.COM  ",
+                Role.TECNICO,
+                false,
+                "new-strong-password"
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmailIgnoreCase("novo@example.com")).thenReturn(false);
+        when(passwordEncoder.encode("new-strong-password")).thenReturn("new-hash");
+        when(userRepository.save(user)).thenReturn(user);
+
+        var response = userService.updateByAdmin(userId, request);
+
+        assertEquals("Nome Atualizado", response.name());
+        assertEquals("novo@example.com", response.email());
+        assertEquals(Role.TECNICO, response.role());
+        assertEquals(false, response.active());
+        assertEquals("new-hash", user.getPasswordHash());
+        verify(userRepository).save(user);
     }
 
     @Test

@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
 
+    private static final UUID ALL_ASSIGNEES_SENTINEL = new UUID(0L, 0L);
+
     @Mock
     private DashboardRepository dashboardRepository;
 
@@ -70,10 +72,11 @@ class DashboardServiceTest {
         );
 
         when(currentUserProvider.get()).thenReturn(new CurrentUser(UUID.randomUUID(), Role.ADMIN));
-        when(dashboardRepository.countByStatus(null, from, to)).thenReturn(statusCounts);
-        when(dashboardRepository.countByPriority(null, from, to)).thenReturn(List.of());
-        when(dashboardRepository.countByCategory(null, from, to)).thenReturn(List.of());
-        when(dashboardRepository.countByTechnician(Role.TECNICO, null, from, to)).thenReturn(List.of());
+        when(dashboardRepository.countByStatus(true, ALL_ASSIGNEES_SENTINEL, from, to)).thenReturn(statusCounts);
+        when(dashboardRepository.countByPriority(true, ALL_ASSIGNEES_SENTINEL, from, to)).thenReturn(List.of());
+        when(dashboardRepository.countByCategory(true, ALL_ASSIGNEES_SENTINEL, from, to)).thenReturn(List.of());
+        when(dashboardRepository.countByTechnician(Role.TECNICO, true, ALL_ASSIGNEES_SENTINEL, from, to))
+                .thenReturn(List.of());
         when(categoryRepository.findAllByActiveTrueOrderByNameAsc()).thenReturn(List.of());
         when(userRepository.findAllByRoleAndActiveTrueOrderByNameAsc(Role.TECNICO)).thenReturn(List.of());
 
@@ -99,11 +102,11 @@ class DashboardServiceTest {
         );
 
         when(currentUserProvider.get()).thenReturn(new CurrentUser(technicianId, Role.TECNICO));
-        when(dashboardRepository.countByStatus(technicianId, from, to)).thenReturn(statusCounts);
-        when(dashboardRepository.countByPriority(technicianId, from, to)).thenReturn(List.of());
-        when(dashboardRepository.countByCategory(technicianId, from, to)).thenReturn(List.of());
+        when(dashboardRepository.countByStatus(false, technicianId, from, to)).thenReturn(statusCounts);
+        when(dashboardRepository.countByPriority(false, technicianId, from, to)).thenReturn(List.of());
+        when(dashboardRepository.countByCategory(false, technicianId, from, to)).thenReturn(List.of());
         when(categoryRepository.findAllByActiveTrueOrderByNameAsc()).thenReturn(List.of());
-        when(dashboardRepository.countByTechnician(Role.TECNICO, technicianId, from, to))
+        when(dashboardRepository.countByTechnician(Role.TECNICO, false, technicianId, from, to))
                 .thenReturn(List.of(technicianCount));
         when(userRepository.findByIdAndRoleAndActiveTrue(technicianId, Role.TECNICO))
                 .thenReturn(Optional.of(technician));
@@ -121,7 +124,7 @@ class DashboardServiceTest {
         assertEquals(1, summary.byTechnician().size());
         assertEquals(technicianId, summary.byTechnician().getFirst().technicianId());
         assertEquals(7, summary.byTechnician().getFirst().total());
-        verify(dashboardRepository).countByStatus(technicianId, from, to);
+        verify(dashboardRepository).countByStatus(false, technicianId, from, to);
     }
 
     @Test
